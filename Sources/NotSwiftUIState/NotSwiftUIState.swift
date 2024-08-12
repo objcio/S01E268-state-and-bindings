@@ -1,3 +1,5 @@
+import Observation
+
 protocol View {
     associatedtype Body: View
     @ViewBuilder var body: Body { get }
@@ -25,6 +27,7 @@ extension View {
             let p1 = pair.0.value
             let p2 = pair.1.value
             if p1 is StateProperty { continue }
+            if p1 is Observable { continue }
             if !isEqual(p1, p2) { return false }
         }
         return true
@@ -53,11 +56,15 @@ extension View {
         self.observeObjects(node)
         self.restoreStateProperties(node)
         
-        let b = body
-        if node.children.isEmpty {
-            node.children = [Node()]
+        withObservationTracking {
+            let b = body
+            if node.children.isEmpty {
+                node.children = [Node()]
+            }
+            b.buildNodeTree(node.children[0])
+        } onChange: {
+            node.needsRebuild = true
         }
-        b.buildNodeTree(node.children[0])
         
         self.storeStateProperties(node)
         node.previousView = self
